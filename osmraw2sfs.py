@@ -127,7 +127,10 @@ class RawView(object):
         self.name = name
         self.db = db
         self.filename = self.build_ini_filename()
-        self.load_from_ini(self.filename)
+        try:
+            self.load_from_ini(self.filename)
+        except Exception, e:
+            raise Exception("Error parsing %s\n%s" % (self.filename, str(e)))
         
         
     def build_ini_filename(self):
@@ -136,40 +139,47 @@ class RawView(object):
         
     def load_from_ini(self, filename):
         print "Loading view from file: " + filename
-        try:
-            config = self.read_config(filename)
-            self.view_name=config.get('name', self.name)
-            self.description=config.get('description', '')
-            self.geom_class=config['geom_class']
-            if self.geom_class == 'way':
-                self.geom_table='osm_ways'
-                self.tags_table = 'osm_way_tags'
-                self.tags_fk = 'way_id'
-            elif self.geom_class == 'node':
-                self.geom_table='osm_nodes'
-                self.tags_table = 'osm_node_tags'
-                self.tags_fk = 'node_id'
+        config = self.parse_ini_file(filename)
+        
+        for required_key in ['tags', 'geom_class']:
+            if not required_key in config or not config.get(required_key, None):
+                raise Exception('Missing required key %s' % required_key)
                 
-            self.tags = config['tags']
-            if self.tags.__class__ == str:
-                self.tags = self.tags.split(',')
-            self.tags = filter(None, self.tags)
-            if self.tags == []:
-                raise Exception('Specify at least one tag in the tags= property')
-            self.where = config.get('where', '')
-            self.build_sql()
-        except Exception, e:
-            print "Unable to read view configuration file {file}.".format(file=filename)
-            raise
+        self.view_name=config.get('name', self.name)
+        self.description=config.get('description', '')
+        
+        self.geom_class=config['geom_class']
+        if self.geom_class == 'way':
+            self.geom_table='osm_ways'
+            self.tags_table = 'osm_way_tags'
+            self.tags_fk = 'way_id'
+        elif self.geom_class == 'node':
+            self.geom_table='osm_nodes'
+            self.tags_table = 'osm_node_tags'
+            self.tags_fk = 'node_id'
+        else:
+            raise Exception('Unsupported geom class: %s' % self.geom_class)
+            
+        self.tags = config['tags']
+        if self.tags.__class__ == str:
+            self.tags = self.tags.split(',')
+        self.tags = [tag.strip() for tag in filter(None, self.tags)]
+        if self.tags == []:
+            raise Exception('Specify at least one tag in the tags= property')
+        self.where = config.get('where', '')
+        self.build_sql()
             
             
-    def read_config(self, filename):
+    def parse_ini_file(self, filename):
+        """
+        Barebone ini parser with no support for sections
+        """
         f = open(filename)
         config = {}
         for line in f:
             line = line.strip()
             if line and line[0] != '#':
-                (key, value) = line.split('=', 1)
+                (key, value) = (part.strip() for part in line.split('=', 1))
                 config[key] = value
         f.close()
         return config
@@ -182,7 +192,7 @@ class RawView(object):
         for field_raw in self.tags:
             if field_raw[-1] == '*':
                 join_type = 'inner'
-                field_raw = field_raw[:-1]
+                field_raw = field_raw[:-1].strip()
             else:
                 join_type = 'left'
             field = field_raw.replace(':','__')
