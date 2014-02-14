@@ -1,5 +1,7 @@
 #! /usr/bin/python
 
+# (C) 2014 Luca S. Percich
+# Released under GPL - See LICENSE.md
 
 from pyspatialite import dbapi2 as db
 

@@ -53,6 +53,8 @@ where=highway != 'steps' and highway != 'footway'
 
 ```
 
+The tool is released under GPL - See LICENSE.md for details.
+
 I took some inspiration from the [spatialite cookbook](http://www.gaia-gis.it/gaia-sins/spatialite-cookbook/html/python.html). Thanks to Alessandro Furieri for the great job with spatialite.
 
 
