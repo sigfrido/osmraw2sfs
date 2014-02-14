@@ -53,3 +53,6 @@ where=highway != 'steps' and highway != 'footway'
 
 ```
 
+I took some inspiration from the [spatialite cookbook](http://www.gaia-gis.it/gaia-sins/spatialite-cookbook/html/python.html). Thanks to Alessandro Furieri for the great job with spatialite.
+
+
