@@ -1,8 +1,5 @@
 #! /usr/bin/python
 
-# Works on a spatialite OSM raw database
-# More ideas on:
-#  http://www.gaia-gis.it/gaia-sins/spatialite-cookbook/html/python.html
 
 from pyspatialite import dbapi2 as db
 

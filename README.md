@@ -1,11 +1,11 @@
 # osmraw2sfs
 
-This tool transform an OSM raw spatialite db into something viewable with QGIS and other OGR SFS compliant GIS.
+This tool makes an OSM raw spatialite db viewable with QGIS and other OGR SFS compliant GIS.
 
 It has two main features:
 
-* Initialise sfs geometry in a given projection for ways and nodes
-* Create / drop spatial views based on the [node|way]-tag relationship.
+* Creates sfs geometry in a given projection for ways and nodes
+* Creates / drops spatial views based on the [node|way]-tag relationship.
 
 An overview of the entire process:
 
@@ -27,7 +27,7 @@ python osmraw2sfs.py milano_raw.sqlite createview wayrailway
 ```
 
 
-Views can be defined usign ini files according to the following model:
+Views can be defined using ini files (located in the views subfolder), according to the following model:
 
 ```
 # exampleview.ini
