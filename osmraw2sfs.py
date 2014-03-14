@@ -14,6 +14,8 @@ class OSMRawDB(object):
     
     def __init__(self, dbpath, SRID=3003):
         self.SRID = SRID
+        if not os.path.exists(dbpath):
+            raise Exception('File not found: %s' % dbpath)
         self.database_path = dbpath
         self.connection = db.connect(self.database_path)
 
@@ -27,6 +29,12 @@ class OSMRawDB(object):
             "select AddGeometryColumn('osm_ways', 'geom', %s, 'LINESTRING', 2)" % self.SRID,
             "select CreateSpatialIndex('osm_ways', 'geom')"
         )
+        self.connection.commit()
+        
+        
+    def stats(self):
+        print "Updating statistics..."
+        self.execute('select UpdateLayerStatistics()')
         self.connection.commit()
 
 
@@ -147,6 +155,7 @@ class RawView(object):
                 
         self.view_name=config.get('name', self.name)
         self.description=config.get('description', '')
+        self.meta = self.get_list_from_str(config.get('meta', ''))
         
         self.geom_class=config['geom_class']
         if self.geom_class == 'way':
@@ -160,14 +169,17 @@ class RawView(object):
         else:
             raise Exception('Unsupported geom class: %s' % self.geom_class)
             
-        self.tags = config['tags']
-        if self.tags.__class__ == str:
-            self.tags = self.tags.split(',')
-        self.tags = [tag.strip() for tag in filter(None, self.tags)]
+        self.tags = self.get_list_from_str(config['tags'])
         if self.tags == []:
             raise Exception('Specify at least one tag in the tags= property')
         self.where = config.get('where', '')
         self.build_sql()
+        
+        
+    def get_list_from_str(self, string_or_list):
+        if string_or_list.__class__ == str:
+            string_or_list = string_or_list.split(',')
+        return [tag.strip() for tag in filter(None, string_or_list)]
             
             
     def parse_ini_file(self, filename):
@@ -200,9 +212,15 @@ class RawView(object):
             join_tpl = "{join_type} join {tags} as {field} on {table}.{tag_id} = {field}.{tag_id} and {field}.k = '{field_raw}'"
             joins.append(join_tpl.format(tags=self.tags_table, tag_id=self.tags_fk, field=field, join_type=join_type, field_raw=field_raw, table=self.geom_table))
             field_list.append(field)
-        sql = 'select {table}.{fk}, {table}.ROWID as rowid, {table}.geom, {fields} from {table} {joins}'.format(fk=self.tags_fk, fields=','.join(fields),table=self.geom_table,joins=' '.join(joins))
+        mft = ', '.join([self.geom_table + '.' + meta_field for meta_field in self.meta])
+        if mft != '':
+            mft = mft + ', '
+        sql = 'select {table}.{fk}, {table}.ROWID as rowid, {meta_fields}{table}.geom, {fields} from {table} {joins}'.format(fk=self.tags_fk, fields=','.join(fields),table=self.geom_table,joins=' '.join(joins), meta_fields=mft)
         if self.where:
-            sql = 'select {fk}, rowid, geom, {fields} from ({sql}) as q where ({where})'.format(fk=self.tags_fk,  fields=','.join(field_list),sql=sql, where=self.where)
+            mft = ', '.join(self.meta)
+        if mft != '':
+            mft = mft + ', '
+            sql = 'select {fk}, rowid, {meta_fields}geom, {fields} from ({sql}) as q where ({where})'.format(fk=self.tags_fk,  fields=','.join(field_list),sql=sql, where=self.where, meta_fields=mft)
         return sql
         
         
@@ -229,9 +247,17 @@ if __name__ == '__main__':
         command = sys.argv[2]
         if command in ['createview', 'dropview']:
             views = sys.argv[3:]
-    except IndexError:
+            if len(views) == 0:
+                raise Exception('Specify at least one view')
+        else:
+            views=[]
+            if not command in ['initdb', 'stats']:
+                raise Exception('Unknown command: %s' % command)
+    except Exception, e:
+        print str(e)
         print "usage: raw2sfs <dbpath.sqlite> <command>"
         print "   command:  initdb"
+        print "   command:  stats"
         print "   command:  createview <view_name> [<view_name>...]"
         print "   command:  dropview <view_name>  [<view_name>...]"
         quit()
@@ -241,13 +267,14 @@ if __name__ == '__main__':
         if command == 'initdb':
             osmdb.init_db_struct()
             osmdb.update_way_geometry()
+        elif command == 'stats':
+            osmdb.stats()
         elif command == 'createview':
             for view in views:
                 osmdb.create_view(view)
         elif command == 'dropview':
             for view in views:
                 osmdb.drop_view(view)
-            
         osmdb.close()
     except Exception, e:
         print "Error processing DB " + db_path
