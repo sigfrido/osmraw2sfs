@@ -212,14 +212,14 @@ class RawView(object):
             join_tpl = "{join_type} join {tags} as {field} on {table}.{tag_id} = {field}.{tag_id} and {field}.k = '{field_raw}'"
             joins.append(join_tpl.format(tags=self.tags_table, tag_id=self.tags_fk, field=field, join_type=join_type, field_raw=field_raw, table=self.geom_table))
             field_list.append(field)
-        mft = ', '.join([self.geom_table + '.' + meta_field for meta_field in self.meta])
+        mft = ', '.join([self.geom_table + '.' + meta_field for meta_field in self.meta if meta_field])
         if mft != '':
             mft = mft + ', '
         sql = 'select {table}.{fk}, {table}.ROWID as rowid, {meta_fields}{table}.geom, {fields} from {table} {joins}'.format(fk=self.tags_fk, fields=','.join(fields),table=self.geom_table,joins=' '.join(joins), meta_fields=mft)
         if self.where:
             mft = ', '.join(self.meta)
-        if mft != '':
-            mft = mft + ', '
+            if mft != '':
+                mft = mft + ', '
             sql = 'select {fk}, rowid, {meta_fields}geom, {fields} from ({sql}) as q where ({where})'.format(fk=self.tags_fk,  fields=','.join(field_list),sql=sql, where=self.where, meta_fields=mft)
         return sql
         
@@ -251,13 +251,14 @@ if __name__ == '__main__':
                 raise Exception('Specify at least one view')
         else:
             views=[]
-            if not command in ['initdb', 'stats']:
+            if not command in ['initdb', 'stats', 'execute']:
                 raise Exception('Unknown command: %s' % command)
     except Exception, e:
         print str(e)
         print "usage: raw2sfs <dbpath.sqlite> <command>"
         print "   command:  initdb"
         print "   command:  stats"
+        print "   command:  execute <sql statement>"
         print "   command:  createview <view_name> [<view_name>...]"
         print "   command:  dropview <view_name>  [<view_name>...]"
         quit()
@@ -269,6 +270,9 @@ if __name__ == '__main__':
             osmdb.update_way_geometry()
         elif command == 'stats':
             osmdb.stats()
+        elif command == 'execute':
+            cmds = sys.argv[3:]
+            osmdb.execute(*cmds)
         elif command == 'createview':
             for view in views:
                 osmdb.create_view(view)
