@@ -47,6 +47,10 @@ geom_class=way
 # tags=key_tag*,key_tag*,optional_tag,optional_tag,...
 tags=highway*,name,oneway,lanes,access
 
+# Meta fields (version, user id...) are expected to be in osm_ways, osm_nodes and osm_relations tables
+# Be sure to download them from overpass specifying <print mode="meta"/>
+meta=version,timestamp,uid,user,changeset
+
 # where condition in sqlite SQL
 # tags names become field names
 where=highway != 'steps' and highway != 'footway' 
