@@ -26,6 +26,19 @@ python osmraw2sfs.py $OUTPATH/milano_raw.sqlite initdb
 python osmraw2sfs.py $OUTPATH/milano_raw.sqlite createview highwaytags railwaytags strade wayrailway locref
 
 
+# Create temp table for AMAT graph
+python osmraw2sfs.py $OUTPATH/milano_raw.sqlite execute "CREATE TABLE 'elemstr_in' ('id' INTEGER, 'carr_sensomarcia' INTEGER, 'carr_numcarreggiate' INTEGER, 'carr_largdx' FLOAT, 'carr_largsn' FLOAT, 'carr_corsiedx' INTEGER, 'carr_corsiesn' INTEGER, 'carr_corsietpldx' INTEGER, 'carr_corsietplsn' INTEGER, 'carr_tpldx_cod' INTEGER, 'carr_tplsn_cod' INTEGER, 'carr_limdx_cod' INTEGER, 'carr_limsn_cod' INTEGER, 'carr_divtrans_cod' INTEGER, 'carr_tramdx' INTEGER, 'carr_tramsn' INTEGER, 'lunghezza' FLOAT, 'comeg3' VARCHAR(1), 'precdx_cod' INTEGER, 'precsn_cod' INTEGER, 'sottopasso' VARCHAR(1), 'tipo_cod' VARCHAR(16), 'via_id' INTEGER, 'nodoorigine_id' INTEGER, 'nododestinazione_id' INTEGER, 'largclasse_cod' VARCHAR(2), 'tronco_id' INTEGER, 'troncorel_proginizio' FLOAT, 'troncorel_progfine' FLOAT, 'troncorel_lato' INTEGER, 'troncorel_distanza' FLOAT, 'classefunz_cod' VARCHAR(2), 'attuazionepgtu' VARCHAR(40), 'classepgtuprog_cod' VARCHAR(16), 'classepgtu_cod' VARCHAR(16), 'enteproprietario_cod' VARCHAR(2), 'stato_cod' VARCHAR(2), 'classificaamm_cod' VARCHAR(2), 'edit_autore' VARCHAR(16), 'edit_istcreazione' VARCHAR(40), 'edit_istmodifica' VARCHAR(40))"
+python osmraw2sfs.py $OUTPATH/milano_raw.sqlite execute "select addgeometrycolumn('elemstr_in', 'geom', 3003, 'LINESTRING', 'XY')"
+
+# Load AMAT road network into spatialite
+ogr2ogr -append -update -lco GEOMETRY_NAME=geom -f "SQLite" $OUTPATH/milano_raw.sqlite /home/sigfrido/D/AMAT/SIS/DEV_LOCAL/ElementoStradale.TAB -nln elemstr_in
+
+# Create temp table for AMAT graph
+python osmraw2sfs.py $OUTPATH/milano_raw.sqlite execute "CREATE TABLE 'elemstr' ('id' INTEGER primary key, 'carr_sensomarcia' INTEGER, 'carr_numcarreggiate' INTEGER, 'carr_largdx' FLOAT, 'carr_largsn' FLOAT, 'carr_corsiedx' INTEGER, 'carr_corsiesn' INTEGER, 'carr_corsietpldx' INTEGER, 'carr_corsietplsn' INTEGER, 'carr_tpldx_cod' INTEGER, 'carr_tplsn_cod' INTEGER, 'carr_limdx_cod' INTEGER, 'carr_limsn_cod' INTEGER, 'carr_divtrans_cod' INTEGER, 'carr_tramdx' INTEGER, 'carr_tramsn' INTEGER, 'lunghezza' FLOAT, 'comeg3' VARCHAR(1), 'precdx_cod' INTEGER, 'precsn_cod' INTEGER, 'sottopasso' VARCHAR(1), 'tipo_cod' VARCHAR(16), 'via_id' INTEGER, 'nodoorigine_id' INTEGER, 'nododestinazione_id' INTEGER, 'largclasse_cod' VARCHAR(2), 'tronco_id' INTEGER, 'troncorel_proginizio' FLOAT, 'troncorel_progfine' FLOAT, 'troncorel_lato' INTEGER, 'troncorel_distanza' FLOAT, 'classefunz_cod' VARCHAR(2), 'attuazionepgtu' VARCHAR(40), 'classepgtuprog_cod' VARCHAR(16), 'classepgtu_cod' VARCHAR(16), 'enteproprietario_cod' VARCHAR(2), 'stato_cod' VARCHAR(2), 'classificaamm_cod' VARCHAR(2), 'edit_autore' VARCHAR(16), 'edit_istcreazione' VARCHAR(40), 'edit_istmodifica' VARCHAR(40))"
+python osmraw2sfs.py $OUTPATH/milano_raw.sqlite execute "select addgeometrycolumn('elemstr', 'geom', 3003, 'LINESTRING', 'XY')"
+python osmraw2sfs.py $OUTPATH/milano_raw.sqlite execute "insert into 'elemstr' select * from elemstr_in" "drop table elemstr_in" "select CreateSpatialIndex('elemstr', 'geom')"
+
+
 # Export in MapInfo format
 ogr2ogr -f "MapInfo file" $OUTPATH/strade.tab $OUTPATH/milano_raw.sqlite strade
 
